@@ -428,7 +428,10 @@ class rex_yform_manager_collection extends \SplFixedArray
         return $success;
     }
 
-    public function getForm(): rex_yform
+    /**
+     * @param string[] $excludeFields Field names to exclude from the form
+     */
+    public function getForm(array $excludeFields = []): rex_yform
     {
         $yform = new rex_yform();
         $yform->setDebug(self::$debug);
@@ -441,6 +444,11 @@ class rex_yform_manager_collection extends \SplFixedArray
         $validations = [];
         $useValidations = [];
         foreach ($this->getTable()->getFields() as $field) {
+            // Skip excluded fields
+            if (in_array($field->getName(), $excludeFields, true)) {
+                continue;
+            }
+
             if ('action' == $field->getType()) {
                 continue;
             }

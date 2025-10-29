@@ -248,6 +248,89 @@ class rex_yform_yorm_test extends TestCase
         }
     }
 
+    public function testExcludeFields()
+    {
+        $prefix = 'unittest_yform_exclude_' . date('YmdHis') . '_';
+        $tableName = $prefix . 'test';
+
+        $table = self::setUpTable($tableName);
+        static::assertNotNull($table, 'table creation failed');
+
+        if ($table) {
+            // Create multiple fields
+            self::setUpTableField($table, [
+                'name' => 'name',
+                'label' => 'Name',
+            ]);
+
+            self::setUpTableField($table, [
+                'name' => 'surname',
+                'label' => 'Surname',
+            ]);
+
+            self::setUpTableField($table, [
+                'name' => 'email',
+                'label' => 'Email',
+            ]);
+
+            // Create a dataset
+            $dataset = rex_yform_manager_dataset::create($tableName);
+            $dataset->setValue('name', 'John');
+            $dataset->setValue('surname', 'Doe');
+            $dataset->setValue('email', 'john@example.com');
+            static::assertTrue($dataset->save(), 'dataset creation failed');
+
+            // Get form without exclusions
+            $yform = $dataset->getForm();
+            static::assertNotNull($yform, 'form creation failed');
+
+            // Count value fields (excluding id)
+            $allFieldCount = count($yform->objparams['values']);
+            static::assertGreaterThanOrEqual(3, $allFieldCount, 'form should have at least 3 fields');
+
+            // Get form with exclusions
+            $yformExcluded = $dataset->getForm(['name', 'surname']);
+            static::assertNotNull($yformExcluded, 'form with exclusions creation failed');
+
+            // Count value fields after exclusion
+            $excludedFieldCount = count($yformExcluded->objparams['values']);
+            static::assertEquals(
+                $allFieldCount - 2,
+                $excludedFieldCount,
+                'excluded form should have 2 fewer fields',
+            );
+
+            // Verify that excluded fields are not in the form
+            $fieldNames = [];
+            foreach ($yformExcluded->objparams['values'] as $field) {
+                $fieldNames[] = $field->getName();
+            }
+            static::assertNotContains('name', $fieldNames, 'name field should be excluded');
+            static::assertNotContains('surname', $fieldNames, 'surname field should be excluded');
+            static::assertContains('email', $fieldNames, 'email field should not be excluded');
+
+            // Cleanup
+            $dataset->delete();
+        }
+
+        // Cleanup table
+        rex_yform_manager_table_api::removeTable($tableName);
+
+        try {
+            rex_sql::factory()->setQuery('DROP TABLE IF EXISTS ' . $tableName);
+            rex_sql::factory()->setQuery(
+                'DELETE FROM ' . rex_yform_manager_table::table() . ' WHERE table_name LIKE :table_name',
+                [':table_name' => $prefix . '%'],
+            );
+            rex_sql::factory()->setQuery(
+                'DELETE FROM ' . rex_yform_manager_field::table() . ' WHERE table_name LIKE :table_name',
+                [':table_name' => $prefix . '%'],
+            );
+            rex_yform_manager_table::deleteCache();
+        } catch (Exception $e) {
+        }
+    }
+
     public function t2estHasValue()
     {
         // Folgende Tests sind möglich
