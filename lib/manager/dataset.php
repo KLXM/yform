@@ -492,9 +492,12 @@ class rex_yform_manager_dataset
         return $this->getTable()->getFields($filter);
     }
 
-    public function getForm(): rex_yform
+    /**
+     * @param string[] $excludeFields Field names to exclude from the form
+     */
+    public function getForm(array $excludeFields = []): rex_yform
     {
-        $yform = $this->createForm();
+        $yform = $this->createForm($excludeFields);
         $this->setFormMainId($yform);
 
         return $yform;
@@ -685,13 +688,21 @@ class rex_yform_manager_dataset
         return $yform;
     }
 
-    private function createForm(): rex_yform
+    /**
+     * @param string[] $excludeFields Field names to exclude from the form
+     */
+    private function createForm(array $excludeFields = []): rex_yform
     {
         $yform = new rex_yform();
         $fields = $this->getFields();
         $yform->setDebug(self::$debug);
 
         foreach ($fields as $field) {
+            // Skip excluded fields
+            if (in_array($field->getName(), $excludeFields, true)) {
+                continue;
+            }
+
             /** @var class-string<rex_yform_base_abstract> $class */
             $class = 'rex_yform_' . $field->getType() . '_' . $field->getTypeName();
 
